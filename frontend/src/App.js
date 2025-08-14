@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 
+// use deployed backend if set, otherwise fall back to local dev backend
+const API_BASE = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+
 function App() {
   const [apiMessage, setApiMessage] = useState("Loading...");
   const [username, setUsername] = useState("");
@@ -18,19 +21,20 @@ function App() {
   const fileInputRef = useRef();
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/")
+    fetch(`${API_BASE}/`)
       .then((res) => res.json())
       .then((data) => setApiMessage(data.message))
       .catch(() => setApiMessage("Could not connect to backend"));
 
-    fetch("http://127.0.0.1:8000/users")
+    fetch(`${API_BASE}/users`)
       .then((res) => res.json())
-      .then((data) => setUsers(data.users || []));
+      .then((data) => setUsers(data.users || []))
+      .catch(() => setUsers([]));
   }, []);
 
   useEffect(() => {
     if (loggedInUser) {
-      setProfilePicUrl(`http://127.0.0.1:8000/profile-pic/${loggedInUser}?t=${Date.now()}`);
+      setProfilePicUrl(`${API_BASE}/profile-pic/${loggedInUser}?t=${Date.now()}`);
     }
   }, [loggedInUser]);
 
@@ -41,17 +45,22 @@ function App() {
     formData.append("username", username);
     formData.append("password", password);
 
-    const res = await fetch("http://127.0.0.1:8000/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formData,
-    });
-    const data = await res.json();
-    setRegisterMsg(data.message);
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
+      });
+      const data = await res.json();
+      setRegisterMsg(data.message);
+    } catch (err) {
+      setRegisterMsg("Registration failed");
+    }
 
-    fetch("http://127.0.0.1:8000/users")
+    fetch(`${API_BASE}/users`)
       .then((res) => res.json())
-      .then((data) => setUsers(data.users || []));
+      .then((data) => setUsers(data.users || []))
+      .catch(() => setUsers([]));
   };
 
   const handleLogin = async (e) => {
@@ -61,17 +70,21 @@ function App() {
     formData.append("username", loginUsername);
     formData.append("password", loginPassword);
 
-    const res = await fetch("http://127.0.0.1:8000/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formData,
-    });
-    const data = await res.json();
-    setLoginMsg(data.message);
-    if (data.message.startsWith("Welcome")) {
-      setLoggedInUser(loginUsername);
-      setShowProfile(false);
-      setProfilePicUrl(`http://127.0.0.1:8000/profile-pic/${loginUsername}?t=${Date.now()}`);
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
+      });
+      const data = await res.json();
+      setLoginMsg(data.message);
+      if (data.message && data.message.startsWith("Welcome")) {
+        setLoggedInUser(loginUsername);
+        setShowProfile(false);
+        setProfilePicUrl(`${API_BASE}/profile-pic/${loginUsername}?t=${Date.now()}`);
+      }
+    } catch (err) {
+      setLoginMsg("Login failed");
     }
   };
 
@@ -92,13 +105,17 @@ function App() {
     formData.append("username", loggedInUser);
     formData.append("file", file);
 
-    const res = await fetch("http://127.0.0.1:8000/upload-profile-pic", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    if (data.filename) {
-      setProfilePicUrl(`http://127.0.0.1:8000/profile-pic/${loggedInUser}?t=${Date.now()}`);
+    try {
+      const res = await fetch(`${API_BASE}/upload-profile-pic`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.filename) {
+        setProfilePicUrl(`${API_BASE}/profile-pic/${loggedInUser}?t=${Date.now()}`);
+      }
+    } catch (err) {
+      // ignore or show error
     }
   };
 
@@ -110,13 +127,17 @@ function App() {
     formData.append("old_password", oldPassword);
     formData.append("new_password", newPassword);
 
-    const res = await fetch("http://127.0.0.1:8000/change-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formData,
-    });
-    const data = await res.json();
-    setChangeMsg(data.message);
+    try {
+      const res = await fetch(`${API_BASE}/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
+      });
+      const data = await res.json();
+      setChangeMsg(data.message);
+    } catch (err) {
+      setChangeMsg("Password update failed");
+    }
     setOldPassword("");
     setNewPassword("");
   };
